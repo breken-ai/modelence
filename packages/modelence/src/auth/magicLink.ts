@@ -14,6 +14,7 @@ import { getConfig } from '@/config/server';
 import { isDisposableEmail } from './disposableEmails';
 import { setAuthTokenCookie, setSessionUser } from './session';
 import { hashToken } from './tokenHash';
+import { appendQuery } from './redirectUrl';
 import { magicLinkTemplate } from './templates/magicLinkTemplate';
 import {
   resolveUrl,
@@ -282,7 +283,10 @@ export async function handleMagicLinkLanding(params: RouteParams): Promise<Route
     return {
       status: 302,
       headers: { 'Referrer-Policy': 'no-referrer' },
-      redirect: `${magicLinkPageUrl}?status=error&message=${encodeURIComponent(message)}`,
+      redirect: appendQuery(
+        magicLinkPageUrl,
+        `status=error&message=${encodeURIComponent(message)}`
+      ),
     };
   }
 }

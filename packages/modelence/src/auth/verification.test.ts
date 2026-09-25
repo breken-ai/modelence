@@ -358,6 +358,48 @@ describe('auth/verification', () => {
       expect(mockTokensDeleteOne).toHaveBeenCalledWith({ _id: tokenDoc._id });
     });
 
+    test('appends status to a redirect URL that already has a query string', async () => {
+      mockGetEmailConfig.mockReturnValue({
+        provider: { sendEmail: vi.fn() },
+        verification: { redirectUrl: 'https://app.example.com/welcome?source=email' },
+      });
+      mockTokensFindOne.mockResolvedValue({
+        _id: 'token-id',
+        token: 'token',
+        userId: 'user123',
+        email: 'user@example.com',
+        expiresAt: new Date(Date.now() + 1000),
+      } as never);
+      mockUsersFindOne.mockResolvedValueOnce({ _id: 'user123' } as never);
+      mockFindOneAndUpdate.mockResolvedValue({
+        _id: 'user123',
+        emails: [{ address: 'user@example.com', verified: true }],
+      } as never);
+      mockCreateSession.mockResolvedValue({ authToken: 'session-token-123' } as never);
+
+      const result = await handleVerifyEmail(baseParams as never);
+
+      expect(result?.redirect).toBe('https://app.example.com/welcome?source=email&status=verified');
+      const url = new URL(result?.redirect as string);
+      expect(url.searchParams.get('status')).toBe('verified');
+      expect(url.searchParams.get('source')).toBe('email');
+    });
+
+    test('appends the error to a redirect URL that already has a query string', async () => {
+      mockGetEmailConfig.mockReturnValue({
+        provider: { sendEmail: vi.fn() },
+        verification: { redirectUrl: 'https://app.example.com/welcome?source=email' },
+      });
+      mockTokensFindOne.mockResolvedValue(null as never);
+
+      const result = await handleVerifyEmail(baseParams as never);
+
+      const url = new URL(result?.redirect as string);
+      expect(url.searchParams.get('source')).toBe('email');
+      expect(url.searchParams.get('status')).toBe('error');
+      expect(url.searchParams.get('message')).toBe('Invalid or expired verification token');
+    });
+
     test('redirects with error when token is invalid', async () => {
       const authConfig = {
         onAfterEmailVerification: vi.fn(),

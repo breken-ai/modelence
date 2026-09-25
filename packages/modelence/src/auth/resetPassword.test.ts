@@ -1227,6 +1227,22 @@ describe('auth/resetPassword', () => {
     afterEach(() => consoleErrorSpy.mockClear());
     afterAll(() => consoleErrorSpy.mockRestore());
 
+    test('appends the error to a redirect URL that already has a query string', async () => {
+      mockGetConfig.mockReturnValue('https://example.com');
+      mockGetEmailConfig.mockReturnValue({
+        passwordReset: { redirectUrl: '/auth?view=reset' },
+      });
+      mockResetTokensFindOne.mockResolvedValue(null);
+
+      const result = await handleResetPasswordLanding(makeParams('bad-token') as never);
+
+      const url = new URL(result?.redirect as string);
+      expect(url.pathname).toBe('/auth');
+      expect(url.searchParams.get('view')).toBe('reset');
+      expect(url.searchParams.get('status')).toBe('error');
+      expect(url.searchParams.get('message')).toBe(FRIENDLY_MESSAGE);
+    });
+
     test('redirects with the friendly error and sets no cookie when the token is invalid', async () => {
       mockGetConfig.mockReturnValue('https://example.com');
       mockGetEmailConfig.mockReturnValue({ passwordReset: { redirectUrl: '/new-password' } });

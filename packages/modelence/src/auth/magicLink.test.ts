@@ -562,6 +562,23 @@ describe('auth/magicLink', () => {
       expect(result?.redirect).not.toContain('bad-token');
     });
 
+    test('appends the error to a redirect URL that already has a query string', async () => {
+      mockGetEmailConfig.mockReturnValue({
+        provider: mockEmailProvider,
+        from: 'test@example.com',
+        magicLink: { redirectUrl: '/auth?view=magic-link' },
+      });
+      mockTokensFindOne.mockResolvedValue(null);
+
+      const result = await handleMagicLinkLanding(makeParams('bad-token') as never);
+
+      const url = new URL(result?.redirect as string);
+      expect(url.pathname).toBe('/auth');
+      expect(url.searchParams.get('view')).toBe('magic-link');
+      expect(url.searchParams.get('status')).toBe('error');
+      expect(url.searchParams.get('message')).toBe(FRIENDLY_MESSAGE);
+    });
+
     test('redirects with the friendly error when the token is expired', async () => {
       mockTokensFindOne.mockResolvedValue(
         createMockToken({ token: 'expired', expiresAt: new Date(Date.now() - 1000) })
